@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-# @Time    : 2018/8/15 10:27
-# @Author  : Lemon_shark
-# @Email   : jiping_cehn@163.com
-# @File    : FM.py
-# @Software: PyCharm Community Edition
-
 # coding:UTF-8
 from __future__ import division
 from math import exp
@@ -13,6 +6,7 @@ from random import normalvariate  # 正态分布
 from datetime import datetime
 import numpy as np
 import pandas as pd
+import os
 
 trainData = '/Users/ruicheng/PycharmProjects/CTRdemo/FM/data/diabetes_train.txt'   #请换为自己文件的路径
 testData = '/Users/ruicheng/PycharmProjects/CTRdemo/FM/data/diabetes_test.txt'
