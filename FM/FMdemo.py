@@ -7,8 +7,10 @@ import numpy as np
 import pandas as pd
 import os
 
-trainData = '/Users/ruicheng/PycharmProjects/CTRdemo/FM/data/diabetes_train.txt'   #请换为自己文件的路径
-testData = '/Users/ruicheng/PycharmProjects/CTRdemo/FM/data/diabetes_test.txt'
+current_path = os.path.realpath(__file__)
+father_path = os.path.dirname(os.path.dirname(current_path))
+trainData = os.path.join(father_path,'FM/data/diabetes_train.txt')
+testData = os.path.join(father_path,'FM/data/diabetes_test.txt')
 
 def preprocessData(data):
     feature=np.array(data.iloc[:,:-1])   #取特征
