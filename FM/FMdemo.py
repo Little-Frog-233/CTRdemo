@@ -1,7 +1,6 @@
 # coding:UTF-8
 from __future__ import division
 from math import exp
-# from numpy import *
 from random import normalvariate  # 正态分布
 from datetime import datetime
 import numpy as np
