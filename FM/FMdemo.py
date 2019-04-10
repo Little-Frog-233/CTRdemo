@@ -15,7 +15,7 @@ testData = os.path.join(father_path,'FM/data/diabetes_test.txt')
 def preprocessData(data):
     feature=np.array(data.iloc[:,:-1])   #取特征
     label=data.iloc[:,-1].map(lambda x: 1 if x==1 else -1) #取标签并转化为 +1，-1
-    #将数组按行进行归一化
+    #将数组按列进行归一化
     zmax, zmin = feature.max(axis=0), feature.min(axis=0)
     feature = (feature - zmin) / (zmax - zmin)
     label=np.array(label)

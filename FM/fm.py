@@ -20,7 +20,7 @@ def preprocessData(data):
 	'''
 	feature=np.array(data.iloc[:,:-1])   #取特征
 	label=data.iloc[:,-1]
-	#将数组按行进行归一化
+	#将数组按列进行归一化
 	_feature = minmax_scale(feature,axis=0)
 	return _feature,label
 
@@ -87,7 +87,7 @@ class fm:
 							v[i, j] = v[i, j] + alpha * loss * y[x] * (
 								X[x, i] * inter_1[0, j] - v[i, j] * X[x, i] * X[x, i])
 			if out:
-				if it % 10 == 0:
+				if it % 100 == 0:
 					print("第{}次迭代后的损失为{}".format(it, loss))
 		self.w_0 = w_0
 		self.w = w
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 	test = pd.read_csv(testData)
 	dataTrain, labelTrain = preprocessData(train)
 	dataTest, labelTest = preprocessData(test)
-	model = fm()
+	model = fm(k=25,iter=300)
 	print("开始训练")
 	model.fit(dataTrain, labelTrain,True)
 	benchmark(model,dataTest,labelTest)
