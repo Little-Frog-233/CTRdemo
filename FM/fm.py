@@ -1,4 +1,7 @@
 #coding:utf-8
+'''
+数据较为稀疏时采用fm算法
+'''
 import numpy as np
 import pandas as pd
 import os
