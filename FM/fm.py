@@ -5,6 +5,7 @@
 import numpy as np
 import pandas as pd
 import os
+import math
 from math import exp
 from random import normalvariate  # 正态分布
 from sklearn.metrics import f1_score,precision_score,accuracy_score,confusion_matrix
@@ -53,7 +54,50 @@ class fm:
 		# return 1. / (1. + exp(-max(min(inx, 15.), -15.)))
 		return 1.0 / (1 + exp(-inx))
 
-	def fit(self,X,y,out=False):
+	# def fit(self,X,y,out=False):
+	# 	'''
+	# 	模型训练函数
+	# 	:param X: [pd.dataframe]
+	# 	:param y: [pd.dataframe]
+	# 	:param out:
+	# 	:return:
+	# 	'''
+	# 	X = np.mat(X) #将X转化为矩阵
+	# 	y = np.array(y.map(lambda x: 1 if x==1 else -1)) # 将标签转化为1和-1
+	# 	m, n = np.shape(X)  # 矩阵的行列数，即样本数和特征数
+	# 	alpha = self.rate
+	# 	# 初始化参数
+	# 	# w = random.randn(n, 1)#其中n是特征的个数
+	# 	w = np.zeros((n, 1))  # 一阶特征的系数
+	# 	w_0 = 0.
+	# 	v = normalvariate(0, 0.2) * np.ones((n, self.k))  # 即生成辅助向量，用来训练二阶交叉特征的系数
+	#
+	# 	for it in range(self.iter):
+	# 		for x in range(m):  # 随机优化，每次只使用一个样本
+	# 			# 二阶项的计算
+	# 			inter_1 = X[x] * v
+	# 			inter_2 = np.multiply(X[x], X[x]) * np.multiply(v, v)  # 二阶交叉项的计算
+	# 			interaction = sum(np.multiply(inter_1, inter_1) - inter_2) / 2.  # 二阶交叉项计算完成
+	#
+	# 			p = w_0 + X[x] * w + interaction  # 计算预测的输出，即FM的全部项之和
+	# 			loss = 1 - self.sigmoid(y[x] * p[0, 0])  # 计算损失
+	#
+	# 			w_0 = w_0 + alpha * loss * y[x]
+	#
+	# 			for i in range(n):
+	# 				if X[x, i] != 0:
+	# 					w[i, 0] = w[i, 0] + alpha * loss * y[x] * X[x, i]
+	# 					for j in range(self.k):
+	# 						v[i, j] = v[i, j] + alpha * loss * y[x] * (
+	# 							X[x, i] * inter_1[0, j] - v[i, j] * X[x, i] * X[x, i])
+	# 		if out:
+	# 			if it % 100 == 0:
+	# 				print("第{}次迭代后的损失为{}".format(it, loss))
+	# 	self.w_0 = w_0
+	# 	self.w = w
+	# 	self.v = v
+
+	def fit_logit(self,X,y,out=False):
 		'''
 		模型训练函数
 		:param X: [pd.dataframe]
@@ -62,39 +106,40 @@ class fm:
 		:return:
 		'''
 		X = np.mat(X) #将X转化为矩阵
-		y = np.array(y.map(lambda x: 1 if x==1 else -1)) # 将标签转化为1和-1
+		y = np.array(y.map(lambda x: 1 if x==1 else 0)) # 将标签转化为1和-1
 		m, n = np.shape(X)  # 矩阵的行列数，即样本数和特征数
 		alpha = self.rate
 		# 初始化参数
 		# w = random.randn(n, 1)#其中n是特征的个数
 		w = np.zeros((n, 1))  # 一阶特征的系数
 		w_0 = 0.
-		v = normalvariate(0, 0.2) * np.ones((n, self.k))  # 即生成辅助向量，用来训练二阶交叉特征的系数
+		v = normalvariate(0, 0.1) * np.ones((n, self.k))  # 即生成辅助向量，用来训练二阶交叉特征的系数
 
 		for it in range(self.iter):
 			for x in range(m):  # 随机优化，每次只使用一个样本
 				# 二阶项的计算
 				inter_1 = X[x] * v
 				inter_2 = np.multiply(X[x], X[x]) * np.multiply(v, v)  # 二阶交叉项的计算
-				interaction = sum(np.multiply(inter_1, inter_1) - inter_2) / 2.  # 二阶交叉项计算完成
-
-				p = w_0 + X[x] * w + interaction  # 计算预测的输出，即FM的全部项之和
-				loss = 1 - self.sigmoid(y[x] * p[0, 0])  # 计算损失
-
-				w_0 = w_0 + alpha * loss * y[x]
-
+				interaction = np.sum(np.multiply(inter_1, inter_1) - inter_2) / 2.# 二阶交叉项计算完成
+				p = w_0 + X[x] * w + interaction # 计算预测的输出，即FM的全部项之和
+				logit = self.sigmoid(p[0,0])
+				loss = -(y[x]*math.log(logit)+(1-y[x])*math.log(1-logit))#交叉熵损失函数
+				w_0 = w_0 - alpha * ((logit - y[x]) * 1)
 				for i in range(n):
 					if X[x, i] != 0:
-						w[i, 0] = w[i, 0] + alpha * loss * y[x] * X[x, i]
+						#梯度优化
+						gradient = (logit - y[x]) * X[x, i]
+						w[i, 0] = w[i, 0] - alpha * gradient * X[x, i]
 						for j in range(self.k):
-							v[i, j] = v[i, j] + alpha * loss * y[x] * (
+							v[i, j] = v[i, j] - alpha * gradient * (
 								X[x, i] * inter_1[0, j] - v[i, j] * X[x, i] * X[x, i])
 			if out:
-				if it % 100 == 0:
+				if it % 10 == 0:
 					print("第{}次迭代后的损失为{}".format(it, loss))
 		self.w_0 = w_0
 		self.w = w
 		self.v = v
+
 
 	def predict(self,X):
 		X = np.mat(X)
@@ -105,8 +150,8 @@ class fm:
 			allItem += 1
 			inter_1 = X[x] * self.v
 			inter_2 = np.multiply(X[x], X[x]) * np.multiply(self.v, self.v)
-			interaction = sum(np.multiply(inter_1, inter_1) - inter_2) / 2.
-			p = self.w_0 + X[x] * self.w + interaction  # 计算预测的输出
+			interaction = np.sum(np.multiply(inter_1, inter_1) - inter_2) / 2.
+			p = self.w_0 + X[x] * self.w + interaction # 计算预测的输出
 			pre = self.sigmoid(p[0, 0])
 			if self.label:
 				if pre >= self.rating:
@@ -123,7 +168,7 @@ if __name__ == '__main__':
 	test = pd.read_csv(testData,header=None)
 	dataTrain, labelTrain = preprocessData(train)
 	dataTest, labelTest = preprocessData(test)
-	model = fm(k=25,iter=200)
+	model = fm(k=15,iter=100)
 	print("开始训练")
-	model.fit(dataTrain, labelTrain,True)
+	model.fit_logit(dataTrain, labelTrain,True)
 	benchmark(model,dataTest,labelTest)
