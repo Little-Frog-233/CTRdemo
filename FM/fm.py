@@ -21,11 +21,11 @@ def preprocessData(data):
 	:param data: [pd.dataframe]
 	:return: x[np.array],y[pd.dataframe]
 	'''
-	feature=np.array(data.iloc[:,:-1])   #取特征
+	feature=data.iloc[:,:-1]   #取特征
 	label=data.iloc[:,-1]
 	#将数组按列进行归一化
-	_feature = minmax_scale(feature,axis=0)
-	return _feature,label
+	# feature = minmax_scale(feature,axis=0)
+	return feature,label
 
 def benchmark(model, testset, label):
 	pred = model.predict(testset)
@@ -119,11 +119,11 @@ class fm:
 
 
 if __name__ == '__main__':
-	train=pd.read_csv(trainData)
-	test = pd.read_csv(testData)
+	train=pd.read_csv(trainData,header=None)
+	test = pd.read_csv(testData,header=None)
 	dataTrain, labelTrain = preprocessData(train)
 	dataTest, labelTest = preprocessData(test)
-	model = fm(k=25,iter=300)
+	model = fm(k=25,iter=200)
 	print("开始训练")
 	model.fit(dataTrain, labelTrain,True)
 	benchmark(model,dataTest,labelTest)
