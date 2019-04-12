@@ -19,6 +19,7 @@ current_path = os.path.realpath(__file__)
 father_path = os.path.dirname(os.path.dirname(current_path))
 trainData = os.path.join(father_path, 'FM/data/diabetes_train.txt')
 testData = os.path.join(father_path, 'FM/data/diabetes_test.txt')
+save_path = os.path.join(father_path,'FM/model/model.npz')
 
 
 def preprocessData(data):
@@ -118,9 +119,7 @@ class fm:
 		:return:
 		'''
 		X = np.mat(X)  # 将X转化为矩阵
-		if type(y) == pd.DataFrame:
-			y = np.array(y.map(lambda x: 1 if x == 1 else 0))  # 将标签转化为1和-1
-
+		y = np.array(y)  # 将标签转化为1和-1
 		m, n = np.shape(X)  # 矩阵的行列数，即样本数和特征数
 		alpha = self.rate
 		# 初始化参数
@@ -153,56 +152,57 @@ class fm:
 		self.w_0 = w_0
 		self.w = w
 		self.v = v
+		print(type(self.w_0), type(self.w), type(self.v))
 
-	def fit_SGD(self, X, y, out=False):
-		'''
-		已放弃改进
-		去他妈的
-		:param X: [pd.dataframe]
-		:param y: [pd.dataframe]
-		:param out:
-		:return:
-		'''
-		X = np.mat(X)  # 将X转化为矩阵
-		if type(y) == pd.DataFrame:
-			y = np.array(y.map(lambda x: 1 if x == 1 else 0))  # 将标签转化为1和-1
-		m, n = np.shape(X)  # 矩阵的行列数，即样本数和特征数
-		alpha = self.rate
-		# 初始化参数
-		# w = random.randn(n, 1)#其中n是特征的个数
-		w = np.zeros((n, 1))  # 一阶特征的系数
-		w_0 = 0.
-		v = normalvariate(0, 0.1) * np.ones((n, self.k))  # 即生成辅助向量，用来训练二阶交叉特征的系数
+	# def fit_SGD(self, X, y, out=False):
+	# 	'''
+	# 	已放弃改进
+	# 	去他妈的
+	# 	:param X: [pd.dataframe]
+	# 	:param y: [pd.dataframe]
+	# 	:param out:
+	# 	:return:
+	# 	'''
+	# 	X = np.mat(X)  # 将X转化为矩阵
+	# 	y = np.array(y)  # 将标签转化为1和-1
+	# 	m, n = np.shape(X)  # 矩阵的行列数，即样本数和特征数
+	# 	alpha = self.rate
+	# 	# 初始化参数
+	# 	# w = random.randn(n, 1)#其中n是特征的个数
+	# 	w = np.zeros((n, 1))  # 一阶特征的系数
+	# 	w_0 = 0.
+	# 	v = normalvariate(0, 0.1) * np.ones((n, self.k))  # 即生成辅助向量，用来训练二阶交叉特征的系数
+	#
+	# 	for it in range(self.iter):
+	# 		for _ in range(self.batch_size):
+	# 			batch = set()
+	# 			for num in range(m):
+	# 				batch.add(random.randint(0, m - 1))
+	# 			# for x in batch:  # 随机优化，每次只使用一个样本
+	# 			batch = [i for i in range(m)]
+	# 			length = len(batch)
+	# 			# 二阶项的计算
+	# 			inter_1 = X[batch] * v
+	# 			inter_2 = np.multiply(X[batch], X[batch]) * np.multiply(v, v)  # 二阶交叉项的计算
+	# 			interaction = np.sum(np.multiply(inter_1, inter_1) - inter_2, axis=1) / 2. # 二阶交叉项计算完成
+	# 			p = w_0 + X[batch] * w + interaction # 计算预测的输出，即FM的全部项之和
+	# 			logit = self.sigmoid_np(p)
+	# 			loss = log_loss(y[batch],logit) # 交叉熵损失函数
+	# 			w_0 = w_0 - alpha * ((np.sum(logit - y[batch]) / length) * 1)
+	# 			for i in range(n):
+	# 				# 梯度优化
+	# 				gradient = (logit - y[batch])
+	# 				w[i, 0] = w[i, 0] - (alpha * (np.sum(np.multiply(gradient, X[batch, i]), axis=1) / length))[0]
+	# 				for j in range(self.k):
+	# 					v[i, j] = v[i, j] - alpha * (np.sum(np.multiply(gradient, (
+	# 					np.multiply(X[batch,i],inter_1[:, j]) - v[i, j] * np.multiply(X[batch, i], X[batch, i]))), axis=1) / length)[0]
+	# 		if out:
+	# 			if it % 10 == 0:
+	# 				print("第{}次迭代后的损失为{}".format(it, loss))
+	# 	self.w_0 = w_0
+	# 	self.w = w
+	# 	self.v = v
 
-		for it in range(self.iter):
-			for _ in range(self.batch_size):
-				batch = set()
-				for num in range(m):
-					batch.add(random.randint(0, m - 1))
-				# for x in batch:  # 随机优化，每次只使用一个样本
-				batch = [i for i in range(m)]
-				length = len(batch)
-				# 二阶项的计算
-				inter_1 = X[batch] * v
-				inter_2 = np.multiply(X[batch], X[batch]) * np.multiply(v, v)  # 二阶交叉项的计算
-				interaction = np.sum(np.multiply(inter_1, inter_1) - inter_2, axis=1) / 2. # 二阶交叉项计算完成
-				p = w_0 + X[batch] * w + interaction # 计算预测的输出，即FM的全部项之和
-				logit = self.sigmoid_np(p)
-				loss = log_loss(y[batch],logit) # 交叉熵损失函数
-				w_0 = w_0 - alpha * ((np.sum(logit - y[batch]) / length) * 1)
-				for i in range(n):
-					# 梯度优化
-					gradient = (logit - y[batch])
-					w[i, 0] = w[i, 0] - (alpha * (np.sum(np.multiply(gradient, X[batch, i]), axis=1) / length))[0]
-					for j in range(self.k):
-						v[i, j] = v[i, j] - alpha * (np.sum(np.multiply(gradient, (
-						np.multiply(X[batch,i],inter_1[:, j]) - v[i, j] * np.multiply(X[batch, i], X[batch, i]))), axis=1) / length)[0]
-			if out:
-				if it % 10 == 0:
-					print("第{}次迭代后的损失为{}".format(it, loss))
-		self.w_0 = w_0
-		self.w = w
-		self.v = v
 
 	def predict(self, X):
 		X = np.mat(X)
@@ -225,6 +225,14 @@ class fm:
 				result.append(pre)
 		return np.array(result)
 
+	def save(self,file_path):
+		np.savez(file_path,w_0=self.w_0,w=self.w,v=self.v)
+
+	def load(self,file_path):
+		npzfile = np.load(file_path)
+		self.w_0 = npzfile['w_0']
+		self.w = npzfile['w']
+		self.v = npzfile['v']
 
 if __name__ == '__main__':
 	# train = pd.read_csv(trainData, header=None)
