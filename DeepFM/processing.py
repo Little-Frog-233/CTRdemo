@@ -30,8 +30,9 @@ def processing_feature(df, target=None, categorical=None, numerical=None):
 	'''
 	# 分离目标变量
 	if target:
-		y = df[target]
-		y = y.values.reshape(len(y), 1)#转换y的shape
+		# y = df[target]
+		# y = y.values.reshape(len(y), 1)#转换y的shape
+		y = pd.get_dummies(df[target])
 	else:
 		y = np.zero(df.shape[0])
 		y = y.reshape(len(y), 1)
@@ -73,7 +74,7 @@ def get_data():
 	target = 'clicked'
 	df_index, df_value, y, cnt = processing_feature(train, target=target, categorical=categorical, numerical=numerical)
 	data = {}
-	data['y_train'] = y
+	data['y_train'] = np.array(y.values).astype('float32')
 	data['xi'] = np.array(df_index.values).astype('int32')
 	data['xv'] = np.array(df_value.values).astype('float32')
 	data['feat_dim'] = cnt
@@ -103,14 +104,14 @@ def get_data_train_test(test_size=0.1,random_state=112):
 
 	train_index, train_value, y_train, cnt_train = processing_feature(train_data, target=target, categorical=categorical, numerical=numerical)
 	data_train = {}
-	data_train['y_train'] = y_train
+	data_train['y_train'] = np.array(y_train.values).astype('float32')
 	data_train['xi'] = np.array(train_index.values).astype('int32')
 	data_train['xv'] = np.array(train_value.values).astype('float32')
 	data_train['feat_dim'] = cnt_train
 
 	test_index, test_value, y_test, cnt_test = processing_feature(test_data, target=target, categorical=categorical, numerical=numerical)
 	data_test = {}
-	data_test['y_train'] = y_test
+	data_test['y_test'] = np.array(y_test.values).astype('float32')
 	data_test['xi'] = np.array(test_index.values).astype('int32')
 	data_test['xv'] = np.array(test_value.values).astype('float32')
 	data_test['feat_dim'] = cnt_test

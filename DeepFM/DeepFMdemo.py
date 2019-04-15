@@ -18,12 +18,14 @@ class Args():
 	field_size = 15 #原始变量个数
 	embedding_size = 256 #辅助向量个数
 	deep_layers = [512, 256, 128] #DNN每层神经元个数
-	epoch = 1000
+	epoch = 500
 	batch_size = 64
 	# 1e-2 1e-3 1e-4
 	learning_rate = 0.01
 	# 防止过拟合
 	l2_reg_rate = 0.01
+	#分类数
+	class_num = 2
 	checkpoint_dir = os.path.join(father_path, 'DeepFM/model')
 
 
@@ -37,10 +39,10 @@ class model():
 		self.embedding_size = args.embedding_size
 		self.deep_layers = args.deep_layers
 		self.l2_reg_rate = args.l2_reg_rate
-
 		self.epoch = args.epoch
 		self.batch_size = args.batch_size
 		self.learning_rate = args.learning_rate
+		self.class_num = args.class_num
 		self.deep_activation = tf.nn.relu
 		self.weight = dict()
 		self.checkpoint_dir = args.checkpoint_dir
@@ -97,8 +99,8 @@ class model():
 		init_method = np.sqrt(np.sqrt(2.0 / (last_layer_size + 1)))
 		# 生成最后一层的结果
 		self.weight['last_layer'] = tf.Variable(
-			np.random.normal(loc=0, scale=init_method, size=(last_layer_size, 1)), dtype=np.float32)
-		self.weight['last_bias'] = tf.Variable(tf.constant(0.01), dtype=np.float32)
+			np.random.normal(loc=0, scale=init_method, size=(last_layer_size, self.class_num)), dtype=np.float32)
+		self.weight['last_bias'] = tf.Variable(tf.constant(0.01),[self.class_num], dtype=np.float32)
 
 		# embedding_part
 		# shape (?,?,256)
@@ -155,15 +157,14 @@ class model():
 
 		# FM输出与DNN输出拼接
 		din_all = tf.concat([self.fm_part, self.deep_embedding], axis=1)
-		self.out = tf.add(tf.matmul(din_all, self.weight['last_layer']), self.weight['last_bias'])
-		print('output:', self.out)
+		self.logits = tf.add(tf.matmul(din_all, self.weight['last_layer']), self.weight['last_bias'])
+		# print('output:', self.logits)
 
 		# loss部分
-		self.out = tf.nn.sigmoid(self.out)
-
-		self.loss = -tf.reduce_mean(
-			self.label * tf.log(self.out + 1e-24) + (1 - self.label) * tf.log(1 - self.out + 1e-24))
-
+		self.out = tf.nn.sigmoid(self.logits)
+		# self.loss = -tf.reduce_mean(
+		# 	self.label * tf.log(self.out + 1e-24) + (1 - self.label) * tf.log(1 - self.out + 1e-24))
+		self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.label,logits=self.logits))
 		# 正则：sum(w^2)/2*l2_reg_rate
 		# 这边只加了weight，有需要的可以加上bias部分
 		self.loss += tf.contrib.layers.l2_regularizer(self.l2_reg_rate)(self.weight["last_layer"])
@@ -171,13 +172,15 @@ class model():
 			self.loss += tf.contrib.layers.l2_regularizer(self.l2_reg_rate)(self.weight["layer_%d" % i])
 
 		self.global_step = tf.Variable(0, trainable=False)
-		opt = tf.train.GradientDescentOptimizer(self.learning_rate)
+		opt = tf.train.AdamOptimizer(self.learning_rate)
 		trainable_params = tf.trainable_variables()
 		print(trainable_params)
 		gradients = tf.gradients(self.loss, trainable_params)
 		clip_gradients, _ = tf.clip_by_global_norm(gradients, 5)
 		self.train_op = opt.apply_gradients(
 			zip(clip_gradients, trainable_params), global_step=self.global_step)
+		###仔细理解此处的tf.clip_by_global_norm代码，其用意是为了处理gradient explosion或者gradients vanishing的问题
+		###此处可更改为self.train_op = opt.minimize(self.loss)
 
 	def train(self, sess, feat_index, feat_value, label):
 		loss, _, step = sess.run([self.loss, self.train_op, self.global_step], feed_dict={
@@ -188,7 +191,7 @@ class model():
 		return loss, step
 
 	def predict(self, sess, feat_index, feat_value):
-		result = sess.run([self.out], feed_dict={
+		result = sess.run(self.out, feed_dict={
 			self.feat_index: feat_index,
 			self.feat_value: feat_value
 		})
@@ -222,6 +225,7 @@ if __name__ == '__main__':
 	data = get_data()
 	args.feature_sizes = data['feat_dim']
 	args.field_size = len(data['xi'][0])
+	args.class_num = 2
 	args.is_training = True
 
 	with tf.Session() as sess:
@@ -241,10 +245,10 @@ if __name__ == '__main__':
 					loss, step = Model.train(sess, X_index, X_value, y)
 				if i % 100 == 0:
 					print('the times of training is %d, and the loss is %s' % (i, loss))
-					Model.save(sess, args.checkpoint_dir)
+					# Model.save(sess, args.checkpoint_dir)
 					result = Model.predict(sess, data['xi'], data['xv'])
-					y_pred = [get_label(i) for i in result[0].reshape(result[0].shape[0])]
-					y_true = [i[0] for i in data['y_train'].tolist()]
+					y_pred = np.argmax(result, axis=1)
+					y_true = np.argmax(data['y_train'], axis=1)
 					print(accuracy_score(y_pred, y_true))
 		else:
 			Model.restore(sess, args.checkpoint_dir)
