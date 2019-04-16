@@ -163,10 +163,10 @@ class model():
 		self.out = tf.nn.sigmoid(self.logits)
 		# self.loss = -tf.reduce_mean(
 		# 	self.label * tf.log(self.out + 1e-24) + (1 - self.label) * tf.log(1 - self.out + 1e-24))
-		self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.label,logits=self.logits))
+		self.log_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.label,logits=self.logits))
 		# 正则：sum(w^2)/2*l2_reg_rate
 		# 这边只加了weight，有需要的可以加上bias部分
-		self.loss += tf.contrib.layers.l2_regularizer(self.l2_reg_rate)(self.weight["last_layer"])
+		self.loss = self.log_loss + tf.contrib.layers.l2_regularizer(self.l2_reg_rate)(self.weight["last_layer"])
 		for i in range(len(self.deep_layers)):
 			self.loss += tf.contrib.layers.l2_regularizer(self.l2_reg_rate)(self.weight["layer_%d" % i])
 
@@ -182,12 +182,20 @@ class model():
 		###此处可更改为self.train_op = opt.minimize(self.loss)
 
 	def train(self, sess, feat_index, feat_value, label):
-		loss, _, step = sess.run([self.loss, self.train_op, self.global_step], feed_dict={
+		_, step = sess.run([self.train_op, self.global_step], feed_dict={
 			self.feat_index: feat_index,
 			self.feat_value: feat_value,
 			self.label: label
 		})
-		return loss, step
+		return step
+
+	def Loss(self,sess,feat_index, feat_value, label):
+		loss = sess.run(self.log_loss,feed_dict={
+			self.feat_index: feat_index,
+			self.feat_value: feat_value,
+			self.label: label
+		})
+		return loss
 
 	def predict(self, sess, feat_index, feat_value):
 		result = sess.run(self.out, feed_dict={
@@ -241,8 +249,9 @@ if __name__ == '__main__':
 				#             print('epoch %s:' % i)
 				for j in range(0, cnt):
 					X_index, X_value, y = get_batch(data['xi'], data['xv'], data['y_train'], args.batch_size, j)
-					loss, step = Model.train(sess, X_index, X_value, y)
+					step = Model.train(sess, X_index, X_value, y)
 				if i % 100 == 0:
+					loss = Model.Loss(sess,data['xi'], data['xv'], data['y_train'])
 					print('the times of training is %d, and the loss is %s' % (i, loss))
 					Model.save(sess, args.checkpoint_dir)
 					result = Model.predict(sess, data['xi'], data['xv'])
