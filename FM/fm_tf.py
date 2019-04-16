@@ -4,8 +4,10 @@ import sys
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, precision_score, accuracy_score, confusion_matrix
-from Data.processing import feature_processing
+from Data.processing import feature_processing,get_data_train_test
 
 class Args():
 	'''
@@ -147,35 +149,35 @@ def get_label(x, rating=0.5):
 	return np.argmax(x, axis=1)
 
 if __name__ == '__main__':
-	# current_path = os.path.realpath(__file__)
-	# father_path = os.path.dirname(os.path.dirname(current_path))
-	# train_path = os.path.join(father_path,'FM/data/diabetes_train.txt')
-	# train_data = pd.read_csv(train_path,header=None)
-	# train_df = pd.DataFrame(train_data.values,columns=['c1','c2','c3','c4','c5','c6','c7','c8','click'])
-	# data = get_data_df(train_df,target='click',numerical=['c2','c3','c5','c7'],categorical=['c1','c4','c6','c8'])
 	current_path = os.path.realpath(__file__)
 	father_path = os.path.dirname(os.path.dirname(current_path))
-	train_path = os.path.join(father_path, 'FM/data/diabetes_train.txt')
-	test_path = os.path.join(father_path, 'FM/data/diabetes_test.txt')
-	train_data = pd.read_csv(train_path, header=None)
-	train_df = pd.DataFrame(train_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
-	# print(train_df.head())
-
-	test_data = pd.read_csv(test_path, header=None)
-	test_df = pd.DataFrame(test_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
-	# print(test_df.head())
-
-	model = feature_processing(target='click', numerical=['c8'], categorical=['c2','c7','c3', 'c5','c1', 'c4', 'c6'])
-	# train_index, train_value, y_train, cnt_train = model.fit_transform(train_df)
-	# test_index, test_value, y_test, cnt_test = model.transform(test_df)
-	data_train = model.fit_transform_data(train_df)
-	data_test = model.transform_data(test_df)
+	# train_path = os.path.join(father_path, 'FM/data/diabetes_train.txt')
+	# test_path = os.path.join(father_path, 'FM/data/diabetes_test.txt')
+	# train_data = pd.read_csv(train_path, header=None)
+	# train_df = pd.DataFrame(train_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
+	# test_data = pd.read_csv(test_path, header=None)
+	# test_df = pd.DataFrame(test_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
+	# model = feature_processing(target='click', numerical=['c8'], categorical=['c2','c7','c3', 'c5','c1', 'c4', 'c6'])
+	# data_train = model.fit_transform_data(train_df)
+	# data_test = model.transform_data(test_df)
+	original_data, y = make_classification(n_samples=2000, n_features=5, n_informative=2, n_redundant=2, n_classes=2,
+	                                       random_state=42)
+	train = pd.DataFrame(original_data, columns=['int1', 'int2', 'float1', 's1', 's2'])
+	train['clicked'] = y
+	train['int1'] = train['int1'].map(int) + np.random.randint(0, 8)
+	train['int2'] = train['int2'].map(int)
+	train['s1'] = np.log(abs(train['s1'] + 1)).round().map(str)
+	train['s2'] = np.log(abs(train['s2'] + 1)).round().map(str)
+	train_data, test_data = train_test_split(train, test_size=0.1, random_state=111)
+	model = feature_processing(target='clicked', numerical=['float1'], categorical=['int1', 'int2', 's1', 's2'])
+	data_train = model.fit_transform_data(train_data)
+	data_test = model.transform_data(test_data)
 
 	args = Args()
 	args.feature_sizes = data_train['feat_dim']
 	args.field_size = len(data_train['xi'][0])
-	args.epoch = 1000
-	args.batch_size = 64
+	args.epoch = 500
+	args.batch_size = 100
 	args.learning_rate = 0.001
 	args.class_num = 2
 	args.is_training = True
@@ -198,9 +200,9 @@ if __name__ == '__main__':
 				if i % 100 == 0:
 					print('the times of training is %d, and the loss is %s' % (i, loss))
 					Model.save(sess, args.checkpoint_dir)
-					result = Model.predict(sess, data_train['xi'], data_train['xv'])
+					result = Model.predict(sess, data_test['xi'], data_test['xv'])
 					y_pred = np.argmax(result, axis=1)
-					y_true = np.argmax(data_train['y_train'], axis=1)
+					y_true = np.argmax(data_test['y_train'], axis=1)
 					print(accuracy_score(y_pred, y_true))
 		else:
 			Model.restore(sess, args.checkpoint_dir)
