@@ -31,7 +31,7 @@ def preprocessData(data):
 	feature = data.iloc[:, :-1]  # 取特征
 	label = data.iloc[:, -1]
 	# 将数组按列进行归一化
-	feature = minmax_scale(feature, axis=0)
+	feature = minmax_scale(feature, axis=1)
 	return feature, label
 
 

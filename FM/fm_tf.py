@@ -2,31 +2,30 @@
 import os
 import sys
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 from sklearn.metrics import f1_score, precision_score, accuracy_score, confusion_matrix
-from Data.processing import get_data
-
-current_path = os.path.realpath(__file__)
-father_path = os.path.dirname(os.path.dirname(current_path))
+from Data.processing import feature_processing
 
 class Args():
 	'''
 	网络参数设置
 	'''
-	feature_sizes = 100 #one-hot后变量个数
-	field_size = 15 #原始变量个数
-	embedding_size = 256 #辅助向量个数
-	deep_layers = [512, 256, 128] #DNN每层神经元个数
-	epoch = 500
-	batch_size = 64
-	# 1e-2 1e-3 1e-4
-	learning_rate = 0.01
-	# 防止过拟合
-	l2_reg_rate = 0.01
-	#分类数
-	class_num = 2
-	checkpoint_dir = os.path.join(father_path, 'FM/model/fm.ckpt')
-	is_training = False
+	def __init__(self):
+		self.feature_sizes = 100 #one-hot后变量个数
+		self.field_size = 15 #原始变量个数
+		self.embedding_size = 256 #辅助向量个数
+		self.deep_layers = [512, 256, 128] #DNN每层神经元个数
+		self.epoch = 500
+		self.batch_size = 64
+		# 1e-2 1e-3 1e-4
+		self.learning_rate = 0.01
+		# 防止过拟合
+		self.l2_reg_rate = 0.01
+		#分类数
+		self.class_num = 2
+		self.checkpoint_dir = os.path.join(father_path, 'FM/model/fm.ckpt')
+		self.is_training = False
 
 class FM:
 	def __init__(self,args):
@@ -148,11 +147,35 @@ def get_label(x, rating=0.5):
 	return np.argmax(x, axis=1)
 
 if __name__ == '__main__':
+	# current_path = os.path.realpath(__file__)
+	# father_path = os.path.dirname(os.path.dirname(current_path))
+	# train_path = os.path.join(father_path,'FM/data/diabetes_train.txt')
+	# train_data = pd.read_csv(train_path,header=None)
+	# train_df = pd.DataFrame(train_data.values,columns=['c1','c2','c3','c4','c5','c6','c7','c8','click'])
+	# data = get_data_df(train_df,target='click',numerical=['c2','c3','c5','c7'],categorical=['c1','c4','c6','c8'])
+	current_path = os.path.realpath(__file__)
+	father_path = os.path.dirname(os.path.dirname(current_path))
+	train_path = os.path.join(father_path, 'FM/data/diabetes_train.txt')
+	test_path = os.path.join(father_path, 'FM/data/diabetes_test.txt')
+	train_data = pd.read_csv(train_path, header=None)
+	train_df = pd.DataFrame(train_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
+	# print(train_df.head())
+
+	test_data = pd.read_csv(test_path, header=None)
+	test_df = pd.DataFrame(test_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
+	# print(test_df.head())
+
+	model = feature_processing(target='click', numerical=['c8'], categorical=['c2','c7','c3', 'c5','c1', 'c4', 'c6'])
+	# train_index, train_value, y_train, cnt_train = model.fit_transform(train_df)
+	# test_index, test_value, y_test, cnt_test = model.transform(test_df)
+	data_train = model.fit_transform_data(train_df)
+	data_test = model.transform_data(test_df)
+
 	args = Args()
-	data = get_data()
-	args.feature_sizes = data['feat_dim']
-	args.field_size = len(data['xi'][0])
-	args.epoch = 100
+	args.feature_sizes = data_train['feat_dim']
+	args.field_size = len(data_train['xi'][0])
+	args.epoch = 1000
+	args.batch_size = 64
 	args.learning_rate = 0.001
 	args.class_num = 2
 	args.is_training = True
@@ -163,26 +186,26 @@ if __name__ == '__main__':
 		sess.run(tf.global_variables_initializer())
 		sess.run(tf.local_variables_initializer())
 
-		cnt = int(len(data['y_train']) / args.batch_size)
+		cnt = int(len(data_train['y_train']) / args.batch_size)
 		print('time all:%s' % cnt)
 		sys.stdout.flush()  # 一秒输出一个数字
 		if args.is_training:
 			for i in range(args.epoch):
 				#             print('epoch %s:' % i)
 				for j in range(0, cnt):
-					X_index, X_value, y = get_batch(data['xi'], data['xv'], data['y_train'], args.batch_size, j)
+					X_index, X_value, y = get_batch(data_train['xi'], data_train['xv'], data_train['y_train'], args.batch_size, j)
 					loss, step = Model.train(sess, X_index, X_value, y)
-				if i % 10 == 0:
+				if i % 100 == 0:
 					print('the times of training is %d, and the loss is %s' % (i, loss))
 					Model.save(sess, args.checkpoint_dir)
-					result = Model.predict(sess, data['xi'], data['xv'])
+					result = Model.predict(sess, data_train['xi'], data_train['xv'])
 					y_pred = np.argmax(result, axis=1)
-					y_true = np.argmax(data['y_train'], axis=1)
+					y_true = np.argmax(data_train['y_train'], axis=1)
 					print(accuracy_score(y_pred, y_true))
 		else:
 			Model.restore(sess, args.checkpoint_dir)
 			for j in range(0, cnt):
-				X_index, X_value, y = get_batch(data['xi'], data['xv'], data['y_train'], args.batch_size, j)
+				X_index, X_value, y = get_batch(data_test['xi'], data_test['xv'], data_test['y_train'], args.batch_size, j)
 				result = Model.predict(sess, X_index, X_value)
 				print(result)
 
