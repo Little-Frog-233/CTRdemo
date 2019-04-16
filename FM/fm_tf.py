@@ -151,15 +151,7 @@ def get_label(x, rating=0.5):
 if __name__ == '__main__':
 	current_path = os.path.realpath(__file__)
 	father_path = os.path.dirname(os.path.dirname(current_path))
-	# train_path = os.path.join(father_path, 'FM/data/diabetes_train.txt')
-	# test_path = os.path.join(father_path, 'FM/data/diabetes_test.txt')
-	# train_data = pd.read_csv(train_path, header=None)
-	# train_df = pd.DataFrame(train_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
-	# test_data = pd.read_csv(test_path, header=None)
-	# test_df = pd.DataFrame(test_data.values, columns=['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'click'])
-	# model = feature_processing(target='click', numerical=['c8'], categorical=['c2','c7','c3', 'c5','c1', 'c4', 'c6'])
-	# data_train = model.fit_transform_data(train_df)
-	# data_test = model.transform_data(test_df)
+	#生成数据
 	original_data, y = make_classification(n_samples=2000, n_features=5, n_informative=2, n_redundant=2, n_classes=2,
 	                                       random_state=42)
 	train = pd.DataFrame(original_data, columns=['int1', 'int2', 'float1', 's1', 's2'])
